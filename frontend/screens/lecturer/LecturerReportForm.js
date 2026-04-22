@@ -1,104 +1,131 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { db } from '../../services/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-export default function LecturerReportForm() {
-  const navigation = useNavigation();
-  const [loading, setLoading] = useState(false);
+export default function LecturerReportForm({ navigation }) {
+  const auth = getAuth();
   const [form, setForm] = useState({
-    courseName: '', courseCode: '', topic: '', week: '', 
-    date: '', venue: '', studentsPresent: '', totalStudents: '',
-    outcomes: '', recommendations: ''
+    courseName: '',
+    courseCode: '',
+    className: '',
+    topic: '',
+    date: '',
+    week: '',
+    totalStudents: '',
+    studentsPresent: '',
+    recommendations: '',
   });
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = (key, value) => setForm({ ...form, [key]: value });
 
   const handleSubmit = async () => {
-    if (!form.courseName || !form.topic) {
-      Alert.alert('Error', 'Please fill in at least Course Name and Topic.');
+    if (!form.topic || !form.date || !form.className) {
+      Alert.alert('Missing Info', 'Please fill in Topic, Date, and Class Name.');
       return;
     }
-    setLoading(true);
+
+    setSaving(true);
     try {
-      const auth = getAuth();
-      const lecturerName = auth.currentUser?.displayName || 'Unknown Lecturer';
-      
       await addDoc(collection(db, 'reports'), {
         ...form,
-        studentsPresent: Number(form.studentsPresent),
         totalStudents: Number(form.totalStudents),
-        lecturerName,
-        createdAt: serverTimestamp()
+        studentsPresent: Number(form.studentsPresent),
+        lecturerName: auth.currentUser.displayName || auth.currentUser.email,
+        createdAt: new Date(),
+        prlFeedback: '', // Empty initially for PRL to fill
+        studentRating: null, // Placeholder for student rating
       });
       Alert.alert('Success', 'Report submitted successfully!');
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e.message);
+      Alert.alert('Error', 'Could not submit report.');
+      console.error(e);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Submit Weekly Report</Text>
-      
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Course Name & Code</Text>
-        <TextInput style={styles.input} placeholder="e.g. Intro to CS" value={form.courseName} onChangeText={t => setForm({...form, courseName: t})} />
-        <TextInput style={styles.input} placeholder="e.g. CS101" value={form.courseCode} onChangeText={t => setForm({...form, courseCode: t})} />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>New Lecture Report</Text>
+        <Text style={styles.headerSub}>Submit class progress & attendance</Text>
       </View>
 
-      <View style={styles.row}>
-        <View style={{flex: 1, marginRight: 10}}>
-          <Text style={styles.label}>Week</Text>
-          <TextInput style={styles.input} placeholder="1" value={form.week} onChangeText={t => setForm({...form, week: t})} />
+      <View style={styles.form}>
+        <View style={styles.row}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Course Name</Text>
+            <TextInput style={styles.input} value={form.courseName} onChangeText={(v) => handleChange('courseName', v)} placeholder="e.g. Web Dev" />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Code</Text>
+            <TextInput style={styles.input} value={form.courseCode} onChangeText={(v) => handleChange('courseCode', v)} placeholder="e.g. WD101" />
+          </View>
         </View>
-        <View style={{flex: 1, marginLeft: 10}}>
-          <Text style={styles.label}>Date</Text>
-          <TextInput style={styles.input} placeholder="YYYY-MM-DD" value={form.date} onChangeText={t => setForm({...form, date: t})} />
+
+        <Text style={styles.label}>Class Name / Group</Text>
+        <TextInput style={styles.input} value={form.className} onChangeText={(v) => handleChange('className', v)} placeholder="e.g. Year 1 Group A" />
+
+        <Text style={styles.label}>Topic Taught</Text>
+        <TextInput style={[styles.input, styles.textArea]} value={form.topic} onChangeText={(v) => handleChange('topic', v)} placeholder="What did you cover today?" multiline numberOfLines={3} />
+
+        <View style={styles.row}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Date</Text>
+            <TextInput style={styles.input} value={form.date} onChangeText={(v) => handleChange('date', v)} placeholder="DD/MM/YYYY" />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Week</Text>
+            <TextInput style={styles.input} value={form.week} onChangeText={(v) => handleChange('week', v)} placeholder="e.g. 1" keyboardType="numeric" />
+          </View>
         </View>
+
+        <View style={styles.row}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Total Students</Text>
+            <TextInput style={styles.input} value={form.totalStudents} onChangeText={(v) => handleChange('totalStudents', v)} placeholder="0" keyboardType="numeric" />
+          </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Present</Text>
+            <TextInput style={[styles.input, { borderColor: Number(form.studentsPresent) > Number(form.totalStudents) ? '#EF4444' : '#E2E8F0' }]} value={form.studentsPresent} onChangeText={(v) => handleChange('studentsPresent', v)} placeholder="0" keyboardType="numeric" />
+          </View>
+        </View>
+
+        <Text style={styles.label}>Recommendations / Remarks</Text>
+        <TextInput style={[styles.input, styles.textArea]} value={form.recommendations} onChangeText={(v) => handleChange('recommendations', v)} placeholder="Any issues or notes..." multiline numberOfLines={4} />
+
+        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={saving}>
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Report</Text>}
+        </TouchableOpacity>
       </View>
-
-      <Text style={styles.label}>Topic Taught</Text>
-      <TextInput style={[styles.input, styles.textArea]} placeholder="Details of the topic..." value={form.topic} onChangeText={t => setForm({...form, topic: t})} multiline />
-
-      <Text style={styles.label}>Venue</Text>
-      <TextInput style={styles.input} placeholder="Room No" value={form.venue} onChangeText={t => setForm({...form, venue: t})} />
-
-      <View style={styles.row}>
-        <View style={{flex: 1}}>
-          <Text style={styles.label}>Total Students</Text>
-          <TextInput style={styles.input} keyboardType="numeric" placeholder="0" value={form.totalStudents} onChangeText={t => setForm({...form, totalStudents: t})} />
-        </View>
-        <View style={{flex: 1, marginLeft: 10}}>
-          <Text style={styles.label}>Present</Text>
-          <TextInput style={styles.input} keyboardType="numeric" placeholder="0" value={form.studentsPresent} onChangeText={t => setForm({...form, studentsPresent: t})} />
-        </View>
-      </View>
-
-      <Text style={styles.label}>Outcomes</Text>
-      <TextInput style={[styles.input, styles.textArea]} placeholder="Learning outcomes..." value={form.outcomes} onChangeText={t => setForm({...form, outcomes: t})} multiline />
-      
-      <Text style={styles.label}>Recommendations</Text>
-      <TextInput style={[styles.input, styles.textArea]} placeholder="Any suggestions..." value={form.recommendations} onChangeText={t => setForm({...form, recommendations: t})} multiline />
-
-      <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FFF"/> : <Text style={styles.btnText}>Submit Report</Text>}
-      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 20 },
-  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#0F172A' },
-  formGroup: { marginBottom: 15 },
-  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 5 },
-  input: { backgroundColor: '#FFF', padding: 12, borderRadius: 8, fontSize: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  headerSub: { fontSize: 13, color: '#64748B' },
+  form: { padding: 20 },
+  row: { flexDirection: 'row', gap: 12 },
+  inputGroup: { flex: 1 },
+  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
+  input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12, fontSize: 14, color: '#0F172A', marginBottom: 16 },
   textArea: { height: 80, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', marginBottom: 10 },
-  btn: { backgroundColor: '#059669', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10, marginBottom: 30 },
-  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  submitBtn: { backgroundColor: '#059669', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
+  submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });

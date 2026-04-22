@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { db } from '../../services/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { LineChart } from 'react-native-chart-kit';
 
 export default function AttendanceScreen() {
@@ -12,12 +12,12 @@ export default function AttendanceScreen() {
   useEffect(() => {
     const loadAttendance = async () => {
       try {
-        // TODO: If you have auth, add .where('studentId', '==', userId) here
+        // Fetching the student's specific attendance records
         const snap = await getDocs(collection(db, 'studentAttendance'));
         const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setAttendanceData(records);
 
-        // Process data for the chart (Group by week/date and calculate %)
+        // Process data for the chart
         const grouped = {};
         records.forEach(r => {
           const label = r.week ? `Week ${r.week}` : (r.date || 'Unknown');
@@ -81,7 +81,7 @@ export default function AttendanceScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.details}>📅 {record.date} | 👤 {record.lecturerName || 'Lecturer'}</Text>
+              <Text style={styles.details}>📅 {record.date} | Week {record.week}</Text>
             </View>
           ))
         )}

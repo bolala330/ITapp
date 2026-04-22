@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { getAuth, signOut } from 'firebase/auth';
 
 const MODULES = [
   { key: 'PRLCoursesScreen', label: 'Courses', desc: 'View courses & lectures under your stream', icon: '📖', color: '#2563EB' },
@@ -10,17 +11,42 @@ const MODULES = [
 ];
 
 export default function PrincipalLecturerHome({ navigation }) {
+  const auth = getAuth();
+
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Yes, Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            navigation.replace('LoginScreen'); 
+          } catch (error) {
+            console.error('Logout Error:', error);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Text style={styles.headerEmoji}>🎓</Text>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIcon}>
+            <Text style={styles.headerEmoji}>🎓</Text>
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>Principal Lecturer</Text>
+            <Text style={styles.headerSub}>Faculty of ICT · LUCT</Text>
+          </View>
         </View>
-        <View>
-          <Text style={styles.headerTitle}>Principal Lecturer</Text>
-          <Text style={styles.headerSub}>Faculty of ICT · LUCT</Text>
-        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Logout ↪</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -75,11 +101,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
     paddingTop: 24,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerIcon: {
     width: 52,
@@ -103,6 +134,15 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  logoutBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA'
+  },
+  logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 12 },
   scroll: {
     flex: 1,
   },

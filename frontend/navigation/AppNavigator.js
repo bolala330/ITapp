@@ -10,8 +10,9 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import StudentHome from '../screens/student/StudentHome';
 import AttendanceScreen from '../screens/student/AttendanceScreen';
 import RatingScreen from '../screens/student/RatingScreen';
-// ✅ ADDED NEW IMPORT
 import StudentLecturesScreen from '../screens/student/StudentLecturesScreen';
+// ✅ ADDED NEW IMPORT FOR MONITORING
+import StudentMonitoringScreen from '../screens/student/StudentMonitoringScreen';
 
 // Lecturer
 import LecturerHome from '../screens/lecturer/LecturerHome';
@@ -51,9 +52,12 @@ export default function AppNavigator() {
 
         {/* Student */}
         <Stack.Screen name="StudentHome" component={StudentHome}/>
-        {/* ✅ ADDED NEW SCREEN HERE */}
         <Stack.Screen name="StudentLecturesScreen" component={StudentLecturesScreen} options={{ title: 'View Lectures' }}/>
         <Stack.Screen name="AttendanceScreen" component={AttendanceScreen}/>
+        
+        {/* ✅ ADDED NEW SCREEN HERE */}
+        <Stack.Screen name="StudentMonitoringScreen" component={StudentMonitoringScreen} options={{ title: 'Academic Monitoring' }}/>
+
         <Stack.Screen name="RatingScreen" component={RatingScreen}/>
 
         {/* Lecturer */}

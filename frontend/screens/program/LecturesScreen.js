@@ -1,32 +1,47 @@
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { db } from '../../services/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function PLLecturesScreen() {
   const [lectures, setLectures] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('https://your-api.com/api/lecture-reports')
-      .then(res => { if (!res.ok) throw new Error('Network error'); return res.json(); })
-      .then(data => { setLectures(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
+    loadLectures();
   }, []);
 
+  const loadLectures = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'reports'));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLectures(list);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) return <ActivityIndicator style={styles.center} size="large" color="#4F46E5" />;
-  if (error) return <Text style={styles.errorText}>Error loading lectures: {error}</Text>;
 
   return (
     <View style={styles.container}>
-      <FlatList data={lectures} keyExtractor={item => item.id.toString()} contentContainerStyle={{ padding: 16 }}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Lectures</Text>
+        <Text style={styles.headerSub}>Submitted by Lecturers</Text>
+      </View>
+      <FlatList
+        data={lectures}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.topic}>{item.topic}</Text>
-            <Text style={styles.details}>🏫 {item.class} | 📅 {item.date}</Text>
-            <View style={[styles.badge, { backgroundColor: item.status === 'Done' ? '#D1FAE5' : '#FEF3C7' }]}>
-              <Text style={{ color: item.status === 'Done' ? '#065F46' : '#92400E', fontSize: 12, fontWeight: '800' }}>
-                {item.status === 'Done' ? '✅ Completed' : '⏳ Pending'}
-              </Text>
+            <Text style={styles.details}>📅 {item.date} • 🏫 {item.className}</Text>
+            <Text style={styles.lecturer}>👨‍🏫 {item.lecturerName}</Text>
+            <View style={[styles.badge, { backgroundColor: '#D1FAE5' }]}>
+              <Text style={styles.badgeText}>Report Submitted</Text>
             </View>
           </View>
         )}
@@ -36,10 +51,16 @@ export default function PLLecturesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { textAlign: 'center', marginTop: 50, color: 'red', fontSize: 16 },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 16, marginBottom: 16, elevation: 2 },
-  topic: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
-  details: { fontSize: 13, color: '#6B7280', marginBottom: 12 },
-  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' }
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
+  headerSub: { fontSize: 13, color: '#6B7280' },
+  list: { padding: 16 },
+  card: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2 },
+  topic: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 6 },
+  details: { fontSize: 13, color: '#6B7280', marginBottom: 4 },
+  lecturer: { fontSize: 12, color: '#4F46E5', fontWeight: '600', marginBottom: 10 },
+  badge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  badgeText: { fontSize: 11, fontWeight: '700', color: '#065F46' }
 });

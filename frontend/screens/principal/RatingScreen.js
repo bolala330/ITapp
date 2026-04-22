@@ -3,9 +3,10 @@ import {
   View,
   Text,
   FlatList,
-  TextInput,
   StyleSheet,
   ActivityIndicator,
+  TextInput,        // ADDED: Fixes the error
+  TouchableOpacity,
 } from 'react-native';
 import { db } from '../../services/firebase';
 import { collection, getDocs } from 'firebase/firestore';
@@ -15,6 +16,7 @@ export default function PRLRatingScreen() {
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [expandedLecturer, setExpandedLecturer] = useState(null);
 
   useEffect(() => {
     load();
@@ -45,27 +47,39 @@ export default function PRLRatingScreen() {
         const lecturer = r.lecturerName?.trim();
         if (!lecturer) return;
 
-        const feedback = r.recommendations?.trim();
+        const feedback = r.recommendations?.trim(); // Lecturer's remarks
         const hasFeedback = feedback && feedback.length > 0;
         const hasPrlFeedback = r.prlFeedback?.trim()?.length > 0;
-        const score = hasFeedback ? 3 : 0;
+        const score = r.studentRating ? Number(r.studentRating) : 0; // Student Rating
+        
+        // Scoring Logic: Lecturer Feedback = 3pts, PRL Feedback = 2pts
         const prlScore = hasPrlFeedback ? 2 : 0;
+        const lecScore = hasFeedback ? 3 : 0;
 
         if (!grouped[lecturer]) {
           grouped[lecturer] = {
             lecturer,
             totalReports: 1,
-            totalScore: score + prlScore,
+            totalScore: score + prlScore + lecScore,
             reportsWithFeedback: hasFeedback ? 1 : 0,
             reportsWithPrlFeedback: hasPrlFeedback ? 1 : 0,
+            // Arrays to hold comments
             feedbacks: hasFeedback ? [feedback] : [],
             prlFeedbacks: hasPrlFeedback ? [r.prlFeedback] : [],
             courses: r.courseName ? [r.courseName] : [],
-            topics: r.topic ? [r.topic] : [],
+            // Detailed lectures list
+            lectures: [{
+              topic: r.topic,
+              date: r.date,
+              studentRating: r.studentRating,
+              lecComment: feedback,
+              prlComment: r.prlFeedback,
+              studentComment: r.studentFeedback
+            }] 
           };
         } else {
           grouped[lecturer].totalReports++;
-          grouped[lecturer].totalScore += score + prlScore;
+          grouped[lecturer].totalScore += score + prlScore + lecScore;
           if (hasFeedback) {
             grouped[lecturer].reportsWithFeedback++;
             grouped[lecturer].feedbacks.push(feedback);
@@ -77,7 +91,15 @@ export default function PRLRatingScreen() {
           if (r.courseName && !grouped[lecturer].courses.includes(r.courseName)) {
             grouped[lecturer].courses.push(r.courseName);
           }
-          if (r.topic) grouped[lecturer].topics.push(r.topic);
+          // Add to lectures list
+          grouped[lecturer].lectures.push({
+            topic: r.topic,
+            date: r.date,
+            studentRating: r.studentRating,
+            lecComment: feedback,
+            prlComment: r.prlFeedback,
+            studentComment: r.studentFeedback
+          });
         }
       });
 
@@ -100,6 +122,7 @@ export default function PRLRatingScreen() {
 
   const renderStars = (rating) => {
     const num = parseFloat(rating);
+    if (!num) return 'N/A';
     const full = Math.floor(num / 1);
     const half = num % 1 >= 0.5 ? 1 : 0;
     const empty = 5 - full - half;
@@ -127,11 +150,11 @@ export default function PRLRatingScreen() {
       <View style={styles.legendBar}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#2563EB' }]} />
-          <Text style={styles.legendText}>Lecturer Feedback (3pts)</Text>
+          <Text style={styles.legendText}>Student Rating (Stars)</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#7C3AED' }]} />
-          <Text style={styles.legendText}>PRL Feedback (2pts)</Text>
+          <Text style={styles.legendText}>PRL Feedback (Points)</Text>
         </View>
       </View>
 
@@ -139,7 +162,7 @@ export default function PRLRatingScreen() {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by lecturer name or course..."
+          placeholder="Search by lecturer name..."
           placeholderTextColor="#94A3B8"
           value={search}
           onChangeText={setSearch}
@@ -151,17 +174,19 @@ export default function PRLRatingScreen() {
         keyExtractor={(item, i) => i.toString()}
         contentContainerStyle={filtered.length === 0 ? styles.emptyContainer : styles.list}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {search ? 'No matching lecturers' : 'No ratings found'}
-          </Text>
+          <Text style={styles.emptyText}>No ratings found</Text>
         }
         renderItem={({ item }) => {
+          const isExpanded = expandedLecturer === item.lecturer;
           const color = getRatingColor(item.avgRating);
 
           return (
             <View style={styles.card}>
               {/* Header */}
-              <View style={styles.cardHeader}>
+              <TouchableOpacity 
+                style={styles.cardHeader}
+                onPress={() => setExpandedLecturer(isExpanded ? null : item.lecturer)}
+              >
                 <View style={styles.avatarBox}>
                   <Text style={styles.avatarText}>
                     {item.lecturer?.charAt(0)?.toUpperCase() || '?'}
@@ -171,88 +196,60 @@ export default function PRLRatingScreen() {
                   <Text style={styles.title}>{item.lecturer}</Text>
                   <Text style={styles.subtitle}>
                     {item.courses.slice(0, 2).join(', ')}
-                    {item.courses.length > 2 ? ` +${item.courses.length - 2}` : ''}
                   </Text>
                 </View>
                 <View style={[styles.ratingBadge, { backgroundColor: color + '15' }]}>
-                  <Text style={[styles.ratingBadgeText, { color }]}>
-                    {item.avgRating}
-                  </Text>
+                  <Text style={[styles.ratingBadgeText, { color }]}>{item.avgRating}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
 
-              {/* Rating Display */}
-              <View style={styles.ratingBox}>
-                <Text style={[styles.stars, { color }]}>{renderStars(item.avgRating)}</Text>
-                <Text style={styles.ratingSub}>out of 5.0</Text>
-              </View>
+              {isExpanded && (
+                <View style={styles.expandedContent}>
+                  <View style={styles.divider} />
+                  
+                  {/* Detailed Comments Section */}
+                  <Text style={styles.sectionTitle}>Detailed Comments & Ratings</Text>
+                  
+                  {item.lectures.map((lec, i) => (
+                    <View key={i} style={styles.lectureDetailCard}>
+                      <View style={styles.lectureHeader}>
+                        <Text style={styles.lectureTopic}>{lec.topic}</Text>
+                        <Text style={styles.lectureDate}>{lec.date}</Text>
+                      </View>
+                      
+                      {/* Student Rating */}
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Student Rating:</Text>
+                        <Text style={[styles.detailValue, { color: getRatingColor(lec.studentRating) }]}>
+                          {renderStars(lec.studentRating)} ({lec.studentRating || 'N/A'})
+                        </Text>
+                      </View>
 
-              {/* Score Breakdown */}
-              <View style={styles.divider} />
-              <View style={styles.breakdownRow}>
-                <View style={styles.breakdownItem}>
-                  <View style={styles.breakdownDotBlue} />
-                  <Text style={styles.breakdownText}>
-                    Lecturer: {item.reportsWithFeedback}/{item.totalReports}
-                  </Text>
-                </View>
-                <View style={styles.breakdownItem}>
-                  <View style={styles.breakdownDotPurple} />
-                  <Text style={styles.breakdownText}>
-                    PRL: {item.reportsWithPrlFeedback}/{item.totalReports}
-                  </Text>
-                </View>
-              </View>
+                      {/* Lecturer Remarks */}
+                      {lec.lecComment ? (
+                        <View style={styles.commentBox}>
+                          <Text style={styles.commentLabel}>👨‍🏫 Lecturer Remarks:</Text>
+                          <Text style={styles.commentText}>{lec.lecComment}</Text>
+                        </View>
+                      ) : null}
 
-              {/* Topics Covered */}
-              <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>Topics Covered ({item.topics.length})</Text>
-              <View style={styles.topicsList}>
-                {item.topics.slice(0, 4).map((t, i) => (
-                  <View key={i} style={styles.topicPill}>
-                    <Text style={styles.topicPillText} numberOfLines={1}>{t}</Text>
-                  </View>
-                ))}
-                {item.topics.length > 4 && (
-                  <Text style={styles.moreText}>+{item.topics.length - 4} more</Text>
-                )}
-              </View>
+                      {/* PRL Feedback */}
+                      {lec.prlComment ? (
+                        <View style={[styles.commentBox, { backgroundColor: '#F5F3FF', borderColor: '#8B5CF6' }]}>
+                          <Text style={[styles.commentLabel, { color: '#7C3AED' }]}>🎓 Your Feedback:</Text>
+                          <Text style={styles.commentText}>{lec.prlComment}</Text>
+                        </View>
+                      ) : null}
 
-              {/* Lecturer Feedback */}
-              <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>Lecturer Feedback ({item.feedbacks.length})</Text>
-              {item.feedbacks.length === 0 ? (
-                <Text style={styles.noneText}>None provided</Text>
-              ) : (
-                <View style={styles.feedbackList}>
-                  {item.feedbacks.slice(0, 2).map((f, i) => (
-                    <View key={i} style={styles.feedbackItem}>
-                      <Text style={styles.bullet}>•</Text>
-                      <Text style={styles.feedbackText} numberOfLines={2}>{f}</Text>
+                      {/* Student Text Feedback */}
+                      {lec.studentComment ? (
+                        <View style={styles.commentBox}>
+                          <Text style={[styles.commentLabel, { color: '#D97706' }]}>⭐ Student Comment:</Text>
+                          <Text style={styles.commentText}>{lec.studentComment}</Text>
+                        </View>
+                      ) : null}
                     </View>
                   ))}
-                  {item.feedbacks.length > 2 && (
-                    <Text style={styles.moreText}>+{item.feedbacks.length - 2} more</Text>
-                  )}
-                </View>
-              )}
-
-              {/* PRL Feedback */}
-              <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>PRL Feedback ({item.prlFeedbacks.length})</Text>
-              {item.prlFeedbacks.length === 0 ? (
-                <Text style={styles.noneText}>None added yet</Text>
-              ) : (
-                <View style={styles.feedbackList}>
-                  {item.prlFeedbacks.slice(0, 2).map((f, i) => (
-                    <View key={i} style={styles.prlFeedbackItem}>
-                      <Text style={styles.prlBullet}>•</Text>
-                      <Text style={styles.prlFeedbackText} numberOfLines={2}>{f}</Text>
-                    </View>
-                  ))}
-                  {item.prlFeedbacks.length > 2 && (
-                    <Text style={styles.moreText}>+{item.prlFeedbacks.length - 2} more</Text>
-                  )}
                 </View>
               )}
             </View>
@@ -264,244 +261,38 @@ export default function PRLRatingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  legendBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    margin: 16,
-    marginBottom: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 16,
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1E293B',
-  },
-  list: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: '#94A3B8',
-    fontSize: 15,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#D97706',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  ratingBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  ratingBadgeText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  ratingBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  stars: {
-    fontSize: 20,
-    letterSpacing: 2,
-  },
-  ratingSub: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginLeft: 10,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 12,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  breakdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  breakdownDotBlue: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2563EB',
-  },
-  breakdownDotPurple: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#7C3AED',
-  },
-  breakdownText: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 8,
-  },
-  noneText: {
-    fontSize: 13,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-  },
-  topicsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  topicPill: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    maxWidth: '60%',
-  },
-  topicPillText: {
-    fontSize: 12,
-    color: '#475569',
-  },
-  moreText: {
-    fontSize: 12,
-    color: '#2563EB',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  feedbackList: {
-    gap: 4,
-  },
-  feedbackItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  bullet: {
-    fontSize: 14,
-    color: '#2563EB',
-    marginRight: 8,
-    marginTop: 1,
-  },
-  feedbackText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-  },
-  prlFeedbackItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  prlBullet: {
-    fontSize: 14,
-    color: '#7C3AED',
-    marginRight: 8,
-    marginTop: 1,
-  },
-  prlFeedbackText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-  },
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  legendBar: { flexDirection: 'row', justifyContent: 'center', gap: 20, margin: 16, backgroundColor: '#FFFFFF', borderRadius: 10, padding: 10, elevation: 1 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  searchWrapper: { flexDirection: 'row', alignItems: 'center', margin: 16, marginBottom: 8, backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 14, height: 48, elevation: 2 },
+  searchIcon: { fontSize: 16, marginRight: 10 },
+  searchInput: { flex: 1, fontSize: 14, color: '#1E293B' },
+  list: { padding: 16, paddingTop: 8 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyText: { color: '#94A3B8', fontSize: 15 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16, marginBottom: 12, elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center' },
+  avatarBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#D97706', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  avatarText: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  headerInfo: { flex: 1 },
+  title: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  subtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  ratingBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  ratingBadgeText: { fontSize: 16, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  expandedContent: { paddingBottom: 4 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 12, marginTop: 4 },
+  lectureDetailCard: { backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  lectureHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  lectureTopic: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  lectureDate: { fontSize: 11, color: '#64748B' },
+  detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  detailLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginRight: 8 },
+  detailValue: { fontSize: 12, fontWeight: '700' },
+  commentBox: { backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 1, borderColor: '#FCD34D' },
+  commentLabel: { fontSize: 11, fontWeight: '700', marginBottom: 4 },
+  commentText: { fontSize: 12, color: '#4B5563', lineHeight: 16 }
 });

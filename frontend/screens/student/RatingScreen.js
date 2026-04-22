@@ -1,122 +1,206 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  TextInput,
+} from 'react-native';
 import { db } from '../../services/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
-export default function RatingScreen() {
-  const [selectedRating, setSelectedRating] = useState(0);
-  const [lecturerName, setLecturerName] = useState('');
-  const [courseCode, setCourseCode] = useState('');
-  const [comments, setComments] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+export default function StudentRatingScreen() {
+  const [lectures, setLectures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  
+  const [selectedLecture, setSelectedLecture] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  
+  const auth = getAuth();
+
+  useEffect(() => {
+    loadLectures();
+  }, []);
+
+  const loadLectures = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'attendance'));
+      const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter unique lectures to avoid duplicates
+      const unique = [];
+      const seen = new Set();
+      
+      docs.forEach(doc => {
+        const key = `${doc.courseCode}-${doc.date}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(doc);
+        }
+      });
+
+      setLectures(unique);
+    } catch (e) {
+      console.log("Error loading lectures:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openRatingModal = (lecture) => {
+    setSelectedLecture(lecture);
+    setRating(0);
+    setComment('');
+    setModalVisible(true);
+  };
 
   const submitRating = async () => {
-    if (selectedRating === 0 || !lecturerName.trim() || !courseCode.trim()) {
-      Alert.alert("Missing Info", "Please select a star rating and enter the lecturer/course.");
+    if (rating === 0) {
+      Alert.alert('Rating Required', 'Please select a star rating.');
       return;
     }
 
-    setIsSubmitting(true);
+    setSubmitting(true);
     try {
-      await addDoc(collection(db, "ratings"), {
-        lecturerName,
-        courseCode,
-        rating: selectedRating,
-        comments,
-        createdAt: new Date(),
-        role: 'student'
+      await addDoc(collection(db, 'ratings'), {
+        courseCode: selectedLecture.courseCode,
+        lecturerName: selectedLecture.lecturerName,
+        date: selectedLecture.date,
+        rating: rating, 
+        comment: comment, // Saving the comment
+        studentEmail: auth.currentUser.email,
+        createdAt: new Date()
       });
-      setSubmitted(true);
+      
+      Alert.alert('Success', 'Thank you for your feedback!');
+      setModalVisible(false);
     } catch (e) {
-      Alert.alert("Error", "Could not submit rating.");
-      console.log(e);
+      Alert.alert('Error', 'Could not save rating.');
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setSelectedRating(0);
-    setLecturerName('');
-    setCourseCode('');
-    setComments('');
-    setSubmitted(false);
-  };
-
-  if (submitted) {
+  const renderStars = (score, interactive = false) => {
     return (
-      <View style={styles.successContainer}>
-        <Text style={styles.successEmoji}>✅</Text>
-        <Text style={styles.successTitle}>Rating Submitted!</Text>
-        <Text style={styles.successSub}>You rated {lecturerName} {selectedRating}/5 stars.</Text>
-        <TouchableOpacity style={styles.newRatingBtn} onPress={resetForm}>
-          <Text style={styles.newRatingText}>Submit Another Rating</Text>
-        </TouchableOpacity>
+      <View style={styles.starRow}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity 
+            key={star} 
+            onPress={() => interactive && setRating(star)} 
+            disabled={!interactive}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.star, interactive && styles.starInteractive]}>
+              {score >= star ? '⭐' : '☆'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
     );
-  }
+  };
+
+  if (loading) return <ActivityIndicator style={styles.center} size="large" color="#2563EB" />;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Rate Lecturer</Text>
-        <Text style={styles.headerSub}>Help improve our lectures</Text>
+        <Text style={styles.headerTitle}>Rate Lectures</Text>
+        <Text style={styles.headerSub}>Share your experience</Text>
       </View>
 
-      <View style={styles.formCard}>
-        <Text style={styles.label}>Lecturer Name</Text>
-        <TextInput style={styles.input} placeholder="e.g. Dr. Smith" value={lecturerName} onChangeText={setLecturerName} />
+      <FlatList
+        data={lectures}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.card} onPress={() => openRatingModal(item)}>
+            <View style={styles.cardTop}>
+              <View>
+                <Text style={styles.courseCode}>{item.courseCode}</Text>
+                <Text style={styles.date}>{item.date}</Text>
+              </View>
+              <Text style={styles.lecturer}>by {item.lecturerName}</Text>
+            </View>
+            <View style={styles.actionRow}>
+              <Text style={styles.actionText}>Tap to Rate & Comment</Text>
+              <Text style={styles.arrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
 
-        <Text style={styles.label}>Course Code</Text>
-        <TextInput style={styles.input} placeholder="e.g. CS-201" value={courseCode} onChangeText={setCourseCode} />
+      {/* Rating Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rate Experience</Text>
+            {selectedLecture && (
+              <Text style={styles.modalSub}>{selectedLecture.courseCode}</Text>
+            )}
+            
+            <View style={styles.modalCenter}>
+              {renderStars(rating, true)}
+            </View>
 
-        <Text style={styles.label}>Your Rating</Text>
-        <View style={styles.starsRow}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <TouchableOpacity key={star} onPress={() => setSelectedRating(star)} activeOpacity={0.7}>
-              <Text style={styles.starEmoji}>
-                {star <= selectedRating ? '⭐' : '☆'}
-              </Text>
+            <Text style={styles.label}>Your Comment</Text>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="What did you like or dislike? (Optional)"
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              textAlignVertical="top"
+            />
+
+            <TouchableOpacity style={styles.saveBtn} onPress={submitRating} disabled={submitting}>
+              <Text style={styles.saveBtnText}>{submitting ? 'Submitting...' : 'Submit Review'}</Text>
             </TouchableOpacity>
-          ))}
-          {selectedRating > 0 && <Text style={styles.ratingText}>{selectedRating}/5</Text>}
+            
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <Text style={styles.label}>Comments (Optional)</Text>
-        <TextInput style={[styles.input, styles.textArea]} placeholder="What went well? What can be improved?" value={comments} onChangeText={setComments} multiline numberOfLines={3} />
-
-        <TouchableOpacity 
-          style={[styles.submitBtn, isSubmitting && styles.disabledBtn]} 
-          onPress={submitRating} 
-          disabled={isSubmitting}
-        >
-          <Text style={styles.submitText}>{isSubmitting ? 'Submitting...' : 'Submit Feedback'}</Text>
-        </TouchableOpacity>
-      </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  headerSub: { fontSize: 13, color: '#64748B', marginTop: 3 },
-  formCard: { backgroundColor: '#FFFFFF', margin: 16, padding: 20, borderRadius: 16, elevation: 3 },
-  label: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8, marginTop: 12 },
-  input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 14, fontSize: 14, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  starsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  starEmoji: { fontSize: 40, marginRight: 8 },
-  ratingText: { fontSize: 18, fontWeight: '700', color: '#2563EB', marginLeft: 10 },
-  submitBtn: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  disabledBtn: { backgroundColor: '#93C5FD' },
-  submitText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  successContainer: { flex: 1, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  successEmoji: { fontSize: 60, marginBottom: 20 },
-  successTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
-  successSub: { fontSize: 16, color: '#64748B', marginTop: 8, textAlign: 'center' },
-  newRatingBtn: { marginTop: 30, backgroundColor: '#FFFFFF', paddingVertical: 14, paddingHorizontal: 30, borderRadius: 12, elevation: 2 },
-  newRatingText: { color: '#2563EB', fontWeight: '700' }
-});  []
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
+  headerSub: { fontSize: 14, color: '#64748B', marginTop: 4 },
+  list: { padding: 20 },
+  card: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 20, marginBottom: 16, elevation: 4, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  courseCode: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
+  date: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+  lecturer: { fontSize: 13, fontWeight: '600', color: '#64748B', textAlign: 'right' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
+  actionText: { fontSize: 15, fontWeight: '600', color: '#2563EB' },
+  arrow: { fontSize: 20, color: '#CBD5E1', fontWeight: '300' },
+  starRow: { flexDirection: 'row', gap: 8 },
+  star: { fontSize: 32 },
+  starInteractive: { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30, paddingBottom: 50 },
+  modalTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+  modalSub: { fontSize: 16, color: '#64748B', marginBottom: 20 },
+  modalCenter: { alignItems: 'center', marginBottom: 30 },
+  label: { fontSize: 14, fontWeight: '700', color: '#334155', marginBottom: 10 },
+  commentInput: { backgroundColor: '#F1F5F9', padding: 16, borderRadius: 16, minHeight: 120, fontSize: 15, color: '#334155', marginBottom: 24 },
+  saveBtn: { backgroundColor: '#2563EB', padding: 16, borderRadius: 16, alignItems: 'center' },
+  saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  cancelText: { textAlign: 'center', color: '#94A3B8', marginTop: 16, fontSize: 15, fontWeight: '600' }
+});

@@ -1,29 +1,72 @@
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+// 1. IMPORT YOUR FIREBASE DB
+import { db } from '../../services/firebase'; 
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function PLClassesScreen() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('https://your-api.com/api/lecture-reports/classes')
-      .then(res => { if (!res.ok) throw new Error('Network error'); return res.json(); })
-      .then(data => { setClasses(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
+    loadClasses();
   }, []);
 
+  const loadClasses = async () => {
+    try {
+      // 2. FETCH FROM 'attendance' COLLECTION (As shown in your image)
+      const snap = await getDocs(collection(db, 'attendance'));
+      const attendanceDocs = snap.docs.map(doc => doc.data());
+
+      // 3. GROUP DATA BY courseCode (Because attendance is individual students, we group by Class)
+      const grouped = {};
+      
+      attendanceDocs.forEach(doc => {
+        const code = doc.courseCode || 'Unknown';
+        if (!grouped[code]) {
+          grouped[code] = {
+            id: code, // Use courseCode as ID
+            name: code,
+            lecturer: doc.lecturerName || 'Not Assigned',
+            count: 1, // Count of attendance records
+          };
+        } else {
+          grouped[code].count++;
+        }
+      });
+
+      const result = Object.values(grouped);
+      setClasses(result);
+    } catch (e) {
+      console.log("Firebase Error:", e); // Check console for specific error
+      Alert.alert("Error", "Could not load classes. Check internet or database rules.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) return <ActivityIndicator style={styles.center} size="large" color="#4F46E5" />;
-  if (error) return <Text style={styles.errorText}>Error loading classes: {error}</Text>;
 
   return (
     <View style={styles.container}>
-      <FlatList data={classes} keyExtractor={item => item.id.toString()} contentContainerStyle={{ padding: 16 }}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Classes</Text>
+        <Text style={styles.headerSub}>Loaded from 'attendance' collection</Text>
+      </View>
+      <FlatList
+        data={classes}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.className}>{item.name}</Text>
-            <Text style={styles.stat}>👨‍🎓 Students: {item.students} | 📊 Avg Grade: {item.avgGrade}</Text>
-            <Text style={styles.instructor}>👨‍🏫 {item.instructor}</Text>
+            <View style={styles.row}>
+               <Text style={styles.lecturer}>👨‍🏫 {item.lecturer}</Text>
+            </View>
+            <View style={styles.divider}></View>
+            <View style={styles.footer}>
+              <Text style={styles.stat}>{item.count} Attendance Records</Text>
+            </View>
           </View>
         )}
       />
@@ -32,10 +75,17 @@ export default function PLClassesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' }, center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { textAlign: 'center', marginTop: 50, color: 'red', fontSize: 16 },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 16, marginBottom: 16, elevation: 2, borderLeftWidth: 6, borderLeftColor: '#10B981' },
-  className: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 10 },
-  stat: { fontSize: 14, color: '#6B7280', fontWeight: '600', marginBottom: 6 },
-  instructor: { fontSize: 13, color: '#4F46E5', fontWeight: '700' }
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
+  headerSub: { fontSize: 13, color: '#6B7280' },
+  list: { padding: 16 },
+  card: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#10B981' },
+  className: { fontSize: 17, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  lecturer: { fontSize: 13, color: '#4F46E5', fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between' },
+  stat: { fontSize: 12, fontWeight: '600', color: '#6B7280' }
 });
