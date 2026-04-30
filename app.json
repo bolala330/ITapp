@@ -1,0 +1,17 @@
+{
+  "android": {
+    "package": "com.chabana.itapp"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "0d39a76e-c011-430a-813c-0e284f7b6e93"
+    }
+  },
+  "runtimeVersion": {
+    "policy": "appVersion"
+  },
+  "updates": {
+    "url": "https://u.expo.dev/0d39a76e-c011-430a-813c-0e284f7b6e93"
+  },
+  "ios": {}
+}

@@ -1,84 +1,57 @@
-import { View, Text, TextInput, Button, ActivityIndicator } from 'react-native';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../services/firebase';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const loginUser = async () => {
-    setError('');
+  const handleLogin = async () => {
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const uid = userCredential.user.uid;
-
-      const userDoc = await getDoc(doc(db, "users", uid));
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Fetch role from Firestore to determine navigation
+      const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const role = userDoc.data().role;
-        switch (role) {
-          case "student": navigation.replace("StudentHome"); break;
-          case "lecturer": navigation.replace("LecturerHome"); break;
-          case "PRL": navigation.replace("PrincipalLecturerHome"); break;
-          case "PL": navigation.replace("ProgramLeaderHome"); break;
-          default: setError("Unknown role, contact admin.");
-        }
+        
+        if (role === 'Lecturer') navigation.replace('LecturerHome');
+        else if (role === 'Student') navigation.replace('StudentHome');
+        else if (role === 'PRL') navigation.replace('PrincipalHome');
+        else if (role === 'PL') navigation.replace('ProgramHome');
+        else Alert.alert('Error', 'User role not defined');
       } else {
-        setError("No user profile found. Please register again.");
+        Alert.alert('Error', 'User profile not found.');
       }
     } catch (error) {
-      // Show Firebase error codes clearly
-      console.log("Login error:", error.code, error.message);
-      if (error.code === "auth/user-not-found") {
-        setError("No account found with this email.");
-      } else if (error.code === "auth/wrong-password") {
-        setError("Incorrect password. Try again.");
-      } else if (error.code === "auth/invalid-email") {
-        setError("Invalid email format.");
-      } else {
-        setError(error.message);
-      }
+      Alert.alert("Login Failed", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={{ flex:1, justifyContent:'center', padding:20 }}>
-      <Text style={{ fontSize:20, marginBottom:20 }}>Login</Text>
-
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={{ borderWidth:1, marginBottom:10, padding:8 }}
-      />
-
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={{ borderWidth:1, marginBottom:10, padding:8 }}
-      />
-
-      {error ? <Text style={{ color:'red', marginBottom:10 }}>{error}</Text> : null}
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <Button title="Login" onPress={loginUser} />
-      )}
-
-      <View style={{ marginTop:20 }}>
-        <Button title="Register" onPress={() => navigation.navigate("RegisterScreen")} />
+    <View style={styles.container}>
+      <Text style={styles.title}>LUCT Reporting</Text>
+      <TextInput placeholder="Email" style={styles.input} autoCapitalize="none" value={email} onChangeText={setEmail} />
+      <TextInput placeholder="Password" style={styles.input} secureTextEntry value={password} onChangeText={setPassword} />
+      
+      {loading ? <ActivityIndicator size="large" color="#0000ff" /> : <Button title="Login" onPress={handleLogin} />}
+      
+      <View style={{marginTop: 10}}>
+          <Button title="Create Account" onPress={() => navigation.navigate('Register')} color="gray" />
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', padding: 20 },
+  title: { fontSize: 24, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 10, borderRadius: 5 }
+});

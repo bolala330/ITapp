@@ -1,232 +1,151 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { getAuth, signOut } from 'firebase/auth';
-
-const MODULES = [
-  { key: 'PRLCoursesScreen', label: 'Courses', desc: 'View courses & lectures under your stream', icon: '📖', color: '#2563EB' },
-  { key: 'PRLReportsScreen', label: 'Reports', desc: 'View reports & add feedback', icon: '📝', color: '#7C3AED' },
-  { key: 'PRLMonitoringScreen', label: 'Monitoring', desc: 'Track class attendance & progress', icon: '📊', color: '#059669' },
-  { key: 'PRLRatingScreen', label: 'Ratings', desc: 'Lecturer performance ratings', icon: '⭐', color: '#D97706' },
-  { key: 'PRLClassesScreen', label: 'Classes', desc: 'All assigned classes overview', icon: '📚', color: '#DC2626' },
-];
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function PrincipalLecturerHome({ navigation }) {
-  const auth = getAuth();
-
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Yes, Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut(auth);
-            navigation.replace('LoginScreen'); 
-          } catch (error) {
-            console.error('Logout Error:', error);
-          }
-        },
-      },
-    ]);
+  
+  const handleLogout = () => {
+    // Fixed: Navigate instead of Reset to handle parent navigators
+    navigation.navigate('Login');
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>🎓</Text>
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>Principal Lecturer</Text>
-            <Text style={styles.headerSub}>Faculty of ICT · LUCT</Text>
-          </View>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout ↪</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Summary Card */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Your Dashboard</Text>
-          <Text style={styles.summarySub}>
-            Manage your stream — courses, reports, monitoring, ratings & classes
-          </Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryPill}>
-              <Text style={styles.summaryPillText}>5 Modules</Text>
-            </View>
-            <View style={styles.summaryPill}>
-              <Text style={styles.summaryPillText}>Real-time Data</Text>
-            </View>
-          </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.greeting}>Admin Console</Text>
+          <Text style={styles.header}>Principal Dashboard</Text>
         </View>
 
-        {/* Module Cards */}
-        {MODULES.map(mod => (
-          <TouchableOpacity
-            key={mod.key}
-            style={styles.card}
-            onPress={() => navigation.navigate(mod.key)}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.cardIcon, { backgroundColor: mod.color + '12' }]}>
-              <Text style={styles.cardEmoji}>{mod.icon}</Text>
+        <View style={styles.buttonGrid}>
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PRLCoursesScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="book-outline" size={28} color="#d946ef" />
             </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardLabel}>{mod.label}</Text>
-              <Text style={styles.cardDesc}>{mod.desc}</Text>
-            </View>
-            <Text style={styles.cardArrow}>›</Text>
+            <Text style={styles.cardText}>Courses</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
-        ))}
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PRLClassesScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="school-outline" size={28} color="#d946ef" />
+            </View>
+            <Text style={styles.cardText}>Classes</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PRLReportsScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="analytics-outline" size={28} color="#d946ef" />
+            </View>
+            <Text style={styles.cardText}>Reports</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PRLMonitoringScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="eye-outline" size={28} color="#d946ef" />
+            </View>
+            <Text style={styles.cardText}>Monitoring</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('PRLRatingScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="star-outline" size={28} color="#d946ef" />
+            </View>
+            <Text style={styles.cardText}>Rating</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </View>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color="#fff" />
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 24,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  headerEmoji: {
-    fontSize: 26,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  headerSub: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  logoutBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA'
-  },
-  logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 12 },
-  scroll: {
-    flex: 1,
+    backgroundColor: '#0f172a',
   },
   scrollContent: {
-    padding: 16,
-  },
-  summaryCard: {
-    backgroundColor: '#2563EB',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    paddingBottom: 80,
   },
-  summaryTitle: {
-    fontSize: 18,
+  headerContainer: {
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  greeting: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  header: {
+    fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#fff',
+    marginTop: 5,
+    textShadowColor: 'rgba(217, 70, 239, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
-  summarySub: {
-    fontSize: 13,
-    color: '#BFDBFE',
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-  },
-  summaryPill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  summaryPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  buttonGrid: {
+    gap: 15,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  cardIcon: {
-    width: 48,
-    height: 48,
+  iconContainer: {
+    backgroundColor: 'rgba(217, 70, 239, 0.1)',
+    padding: 10,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
+    marginRight: 15,
   },
-  cardEmoji: {
-    fontSize: 22,
-  },
-  cardInfo: {
+  cardText: {
     flex: 1,
+    color: '#e2e8f0',
+    fontSize: 18,
+    fontWeight: '600',
   },
-  cardLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+  logoutButton: {
+    flexDirection: 'row',
+    backgroundColor: '#ef4444',
+    margin: 20,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  cardDesc: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 3,
-  },
-  cardArrow: {
-    fontSize: 24,
-    color: '#CBD5E1',
-    fontWeight: '300',
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 });

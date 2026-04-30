@@ -11,9 +11,19 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@react-navigation/native": "^7.2.2",
+    "@react-navigation/stack": "^7.8.11",
     "cors": "^2.8.6",
     "exceljs": "^4.4.0",
+    "expo-file-system": "^55.0.17",
+    "expo-sharing": "^55.0.18",
     "express": "^5.2.1",
-    "firebase-admin": "^13.8.0"
+    "firebase": "^12.12.1",
+    "firebase-admin": "^13.8.0",
+    "react-native-gesture-handler": "^2.31.1",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
+    "react-navigation-stack": "^2.10.4",
+    "xlsx": "^0.18.5"
   }
 }

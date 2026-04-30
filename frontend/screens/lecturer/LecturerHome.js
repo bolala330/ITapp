@@ -1,117 +1,144 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { getAuth, signOut } from 'firebase/auth';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function LecturerHome() {
-  const navigation = useNavigation();
-  const auth = getAuth();
-  const user = auth.currentUser;
-
-  // Extract name from display name, fallback to email if name not set
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Lecturer';
-
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Yes, Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut(auth);
-            navigation.replace('LoginScreen');
-          } catch (error) {
-            console.error('Logout Error:', error);
-          }
-        },
-      },
-    ]);
+export default function LecturerHome({ navigation }) {
+  
+  const handleLogout = () => {
+    // Use 'navigate' to bubble up to the Root Navigator where 'Login' is defined.
+    // This avoids the "not handled by any navigator" error.
+    navigation.navigate('Login');
   };
-
-  const menuItems = [
-    { title: 'My Classes', icon: '📚', screen: 'ClassesScreen', color: '#0EA5E9' },
-    { title: 'New Report', icon: '📝', screen: 'LecturerReportForm', color: '#059669' },
-    { title: 'My Reports', icon: '📂', screen: 'LecturerReportsList', color: '#6366F1' },
-    { title: 'Monitoring', icon: '📊', screen: 'MonitoringScreen', color: '#D97706' },
-    { title: 'My Ratings', icon: '⭐', screen: 'LecturerRatingScreen', color: '#DB2777' },
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcome}>Welcome,</Text>
-          <Text style={styles.userName}>{displayName}</Text>
-          <Text style={styles.role}>Lecturer Dashboard</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.greeting}>Welcome Back</Text>
+          <Text style={styles.header}>Lecturer Dashboard</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout ↪</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.grid}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.card}
-            onPress={() => navigation.navigate(item.screen)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-              <Text style={styles.icon}>{item.icon}</Text>
+        <View style={styles.buttonGrid}>
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('LecturerReportForm')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="document-text-outline" size={28} color="#00d2ff" />
             </View>
-            <Text style={styles.label}>{item.title}</Text>
+            <Text style={styles.cardText}>New Report Form</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
-        ))}
-      </View>
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('LecturerReportsList')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="folder-open-outline" size={28} color="#00d2ff" />
+            </View>
+            <Text style={styles.cardText}>My Reports</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ClassesScreen')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="people-outline" size={28} color="#00d2ff" />
+            </View>
+            <Text style={styles.cardText}>My Classes</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.card} onPress={() => alert('Monitoring Module')}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="pulse-outline" size={28} color="#00d2ff" />
+            </View>
+            <Text style={styles.cardText}>Monitoring</Text>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color="#fff" />
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { 
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a', // Dark futuristic background
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 80,
+  },
+  headerContainer: {
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  greeting: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  header: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: 5,
+    textShadowColor: 'rgba(0, 210, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  buttonGrid: {
+    gap: 15,
+  },
+  card: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 30, 
-    backgroundColor: '#FFFFFF', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E2E8F0' 
-  },
-  welcome: { fontSize: 16, color: '#64748B', fontWeight: '500' },
-  userName: { fontSize: 28, fontWeight: '800', color: '#0F172A', marginTop: 4 },
-  role: { fontSize: 14, color: '#94A3B8', marginTop: 2 },
-  logoutBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)', // Glassmorphism background
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FECACA'
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', padding: 20, justifyContent: 'space-between' },
-  card: { 
-    width: '48%', 
-    backgroundColor: '#FFFFFF', 
-    padding: 20, 
-    borderRadius: 16, 
-    marginBottom: 20, 
-    alignItems: 'center', 
-    elevation: 2,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5,
-    borderWidth: 1, borderColor: '#F1F5F9'
+  iconContainer: {
+    backgroundColor: 'rgba(0, 210, 255, 0.1)',
+    padding: 10,
+    borderRadius: 12,
+    marginRight: 15,
   },
-  iconContainer: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 25, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: 12 
+  cardText: {
+    flex: 1,
+    color: '#e2e8f0',
+    fontSize: 18,
+    fontWeight: '600',
   },
-  icon: { fontSize: 24 },
-  label: { fontSize: 14, fontWeight: '700', color: '#1E293B' }
+  logoutButton: {
+    flexDirection: 'row',
+    backgroundColor: '#ef4444',
+    margin: 20,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
 });

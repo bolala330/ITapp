@@ -2,43 +2,42 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
-// Auth
+// AUTH
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
-// Student
-import StudentHome from '../screens/student/StudentHome';
-import AttendanceScreen from '../screens/student/AttendanceScreen';
-import RatingScreen from '../screens/student/RatingScreen';
-import StudentLecturesScreen from '../screens/student/StudentLecturesScreen';
-// ✅ ADDED NEW IMPORT FOR MONITORING
-import StudentMonitoringScreen from '../screens/student/StudentMonitoringScreen';
-
-// Lecturer
+// LECTURER MODULE
 import LecturerHome from '../screens/lecturer/LecturerHome';
 import LecturerReportForm from '../screens/lecturer/LecturerReportForm';
-import ClassesScreen from '../screens/lecturer/ClassesScreen';
-import MonitoringScreen from '../screens/lecturer/MonitoringScreen';
-import LecturerRatingScreen from '../screens/lecturer/RatingScreen'; 
-import StudentAttendanceScreen from '../screens/lecturer/StudentAttendanceScreen';
-import LecturerReportsList from '../screens/lecturer/LecturerReportsList'; 
+import LecturerReportsList from '../screens/lecturer/LecturerReportsList';
+import LecturerClassesScreen from '../screens/lecturer/ClassesScreen';
+import LecturerRatingScreen from '../screens/lecturer/LecturerRatingScreen';
+import LecturerMonitoringScreen from '../screens/lecturer/MonitoringScreen';
+import LecturerAttendanceScreen from '../screens/lecturer/StudentAttendanceScreen';
 
-// Principal Lecturer (PRL)
+// STUDENT MODULE
+import StudentHome from '../screens/student/StudentHome';
+import StudentAttendanceScreen from '../screens/student/AttendanceScreen';
+import StudentRatingScreen from '../screens/student/RatingScreen';
+import StudentLecturesScreen from '../screens/student/StudentLecturesScreen';
+import StudentMonitoringScreen from '../screens/student/StudentMonitoringScreen';
+
+// PRINCIPAL (PRL) MODULE
 import PrincipalLecturerHome from '../screens/principal/PrincipalLecturerHome';
-import PRLCoursesScreen from '../screens/principal/CoursesScreen';
 import PRLReportsScreen from '../screens/principal/ReportsScreen';
-import PRLMonitoringScreen from '../screens/principal/MonitoringScreen';
 import PRLRatingScreen from '../screens/principal/RatingScreen';
+import PRLCoursesScreen from '../screens/principal/CoursesScreen';
+import PRLMonitoringScreen from '../screens/principal/MonitoringScreen';
 import PRLClassesScreen from '../screens/principal/ClassesScreen';
 
-// Program Leader (PL)
+// PROGRAM LEADER (PL) MODULE
 import ProgramLeaderHome from '../screens/program/ProgramLeaderHome';
 import PLCoursesScreen from '../screens/program/CoursesScreen';
-import PLReportsScreen from '../screens/program/ReportsScreen';
-import PLMonitoringScreen from '../screens/program/MonitoringScreen';
 import PLClassesScreen from '../screens/program/ClassesScreen';
 import PLLecturesScreen from '../screens/program/LecturesScreen';
+import PLMonitoringScreen from '../screens/program/MonitoringScreen';
 import PLRatingScreen from '../screens/program/RatingScreen';
+import PLReportsScreen from '../screens/program/ReportsScreen';
 
 const Stack = createStackNavigator();
 
@@ -46,45 +45,47 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="LoginScreen">
-        {/* Auth */}
-        <Stack.Screen name="LoginScreen" component={LoginScreen}/>
-        <Stack.Screen name="RegisterScreen" component={RegisterScreen}/>
-
-        {/* Student */}
-        <Stack.Screen name="StudentHome" component={StudentHome}/>
-        <Stack.Screen name="StudentLecturesScreen" component={StudentLecturesScreen} options={{ title: 'View Lectures' }}/>
-        <Stack.Screen name="AttendanceScreen" component={AttendanceScreen}/>
         
-        {/* ✅ ADDED NEW SCREEN HERE */}
-        <Stack.Screen name="StudentMonitoringScreen" component={StudentMonitoringScreen} options={{ title: 'Academic Monitoring' }}/>
+        {/* AUTH */}
+        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Register' }} />
 
-        <Stack.Screen name="RatingScreen" component={RatingScreen}/>
+        {/* LECTURER MODULE */}
+        <Stack.Screen name="LecturerHome" component={LecturerHome} options={{ title: 'Lecturer Dashboard' }} />
+        <Stack.Screen name="LecturerReportForm" component={LecturerReportForm} options={{ title: 'New Report' }} />
+        <Stack.Screen name="LecturerReportsList" component={LecturerReportsList} options={{ title: 'My Reports' }} />
+        <Stack.Screen name="LecturerClasses" component={LecturerClassesScreen} options={{ title: 'My Classes' }} />
+        <Stack.Screen name="LecturerRatingScreen" component={LecturerRatingScreen} options={{ title: 'Ratings' }} />
+        <Stack.Screen name="LecturerMonitoring" component={LecturerMonitoringScreen} options={{ title: 'Monitoring' }} />
+        <Stack.Screen name="LecturerAttendance" component={LecturerAttendanceScreen} options={{ title: 'Take Attendance' }} />
 
-        {/* Lecturer */}
-        <Stack.Screen name="LecturerHome" component={LecturerHome}/>
-        <Stack.Screen name="LecturerReportForm" component={LecturerReportForm}/>
-        <Stack.Screen name="ClassesScreen" component={ClassesScreen}/>
-        <Stack.Screen name="MonitoringScreen" component={MonitoringScreen}/>
-        <Stack.Screen name="LecturerRatingScreen" component={LecturerRatingScreen}/>
-        <Stack.Screen name="StudentAttendanceScreen" component={StudentAttendanceScreen}/>
-        <Stack.Screen name="LecturerReportsList" component={LecturerReportsList} />
+        {/* STUDENT MODULE */}
+        <Stack.Screen name="StudentHome" component={StudentHome} options={{ title: 'Student Dashboard' }} />
+        <Stack.Screen name="StudentAttendance" component={StudentAttendanceScreen} options={{ title: 'My Attendance' }} />
+        <Stack.Screen name="StudentRating" component={StudentRatingScreen} options={{ title: 'Rate Lecturer' }} />
+        <Stack.Screen name="StudentLectures" component={StudentLecturesScreen} options={{ title: 'My Lectures' }} />
+        <Stack.Screen name="StudentMonitoring" component={StudentMonitoringScreen} options={{ title: 'Monitoring' }} />
 
-        {/* Principal Lecturer */}
-        <Stack.Screen name="PrincipalLecturerHome" component={PrincipalLecturerHome}/>
-        <Stack.Screen name="PRLCoursesScreen" component={PRLCoursesScreen}/>
-        <Stack.Screen name="PRLReportsScreen" component={PRLReportsScreen}/>
-        <Stack.Screen name="PRLMonitoringScreen" component={PRLMonitoringScreen}/>
-        <Stack.Screen name="PRLRatingScreen" component={PRLRatingScreen}/>
-        <Stack.Screen name="PRLClassesScreen" component={PRLClassesScreen}/>
+        {/* PRINCIPAL (PRL) MODULE */}
+        <Stack.Screen name="PrincipalHome" component={PrincipalLecturerHome} options={{ title: 'Principal Dashboard' }} />
+        <Stack.Screen name="PRLCoursesScreen" component={PRLCoursesScreen} options={{ title: 'Courses' }} />
+        <Stack.Screen name="PRLClassesScreen" component={PRLClassesScreen} options={{ title: 'Classes' }} />
+        <Stack.Screen name="PRLReportsScreen" component={PRLReportsScreen} options={{ title: 'Reports' }} />
+        <Stack.Screen name="PRLRatingScreen" component={PRLRatingScreen} options={{ title: 'Rating' }} />
+        <Stack.Screen name="PRLMonitoringScreen" component={PRLMonitoringScreen} options={{ title: 'Monitoring' }} />
 
-        {/* Program Leader */}
-        <Stack.Screen name="ProgramLeaderHome" component={ProgramLeaderHome}/>
-        <Stack.Screen name="PLCoursesScreen" component={PLCoursesScreen}/>
-        <Stack.Screen name="PLReportsScreen" component={PLReportsScreen}/>
-        <Stack.Screen name="PLMonitoringScreen" component={PLMonitoringScreen}/>
-        <Stack.Screen name="PLClassesScreen" component={PLClassesScreen}/>
-        <Stack.Screen name="PLLecturesScreen" component={PLLecturesScreen}/>
-        <Stack.Screen name="PLRatingScreen" component={PLRatingScreen}/>
+        {/* PROGRAM LEADER (PL) MODULE */}
+        <Stack.Screen name="ProgramHome" component={ProgramLeaderHome} options={{ title: 'Program Leader' }} />
+        <Stack.Screen name="PLCoursesScreen" component={PLCoursesScreen} options={{ title: 'Courses' }} />
+        <Stack.Screen name="PLClassesScreen" component={PLClassesScreen} options={{ title: 'Classes' }} />
+        <Stack.Screen name="PLLecturesScreen" component={PLLecturesScreen} options={{ title: 'Lectures' }} />
+        <Stack.Screen name="PLMonitoringScreen" component={PLMonitoringScreen} options={{ title: 'Monitoring' }} />
+        <Stack.Screen name="PLRatingScreen" component={PLRatingScreen} options={{ title: 'Rating' }} />
+        <Stack.Screen name="PLReportsScreen" component={PLReportsScreen} options={{ title: 'Reports' }} />
+
+        {/* GENERIC FIX: Added this line to handle the "RatingScreen" error */}
+        <Stack.Screen name="RatingScreen" component={StudentRatingScreen} options={{ title: 'Rating' }} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,83 +1,76 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { db } from '../../services/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../../services/firebase';
+import * as XLSX from 'xlsx';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function LecturerReportsList() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const auth = getAuth();
+  const [reports, setReports] = useState([]);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    loadReports();
+    const q = query(collection(db, "reports"), where("lecturerId", "==", auth.currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setReports(data);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const loadReports = async () => {
+  // Extra Credit: Search Functionality
+  const filteredReports = reports.filter(item => 
+    item.courseName.toLowerCase().includes(search.toLowerCase()) || 
+    item.topic.toLowerCase().includes(search.toLowerCase()) ||
+    item.date.includes(search)
+  );
+
+  // Extra Credit: Generate Downloadable Excel Report
+  const downloadExcel = async () => {
     try {
-      const user = auth.currentUser;
-      const snap = await getDocs(collection(db, 'reports'));
-      const reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const ws = XLSX.utils.json_to_sheet(filteredReports);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Reports");
       
-      // Filter to show only this lecturer's reports
-      const myReports = reports.filter(r => r.lecturerName === user.displayName || r.lecturerName === user.email);
+      // Generate base64
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
       
-      // Sort by newest
-      myReports.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      // Save to file
+      const fileUri = FileSystem.documentDirectory + "LecturerReports.xlsx";
+      await FileSystem.writeAsStringAsync(fileUri, wbout, { encoding: FileSystem.EncodingType.Base64 });
       
-      setData(myReports);
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setLoading(false);
+      // Share/Download
+      await Sharing.shareAsync(fileUri);
+    } catch (error) {
+      Alert.alert("Export Error", error.message);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Reports</Text>
-        <Text style={styles.headerSub}>History of submitted lectures</Text>
+      <View style={styles.headerRow}>
+        <TextInput 
+          style={styles.searchBar} 
+          placeholder="Search (Course, Topic, Date)..." 
+          value={search}
+          onChangeText={setSearch}
+        />
+        <TouchableOpacity onPress={downloadExcel} style={styles.excelBtn}>
+          <Text style={styles.excelText}>Excel</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        data={filteredReports}
+        keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.date}>{item.date}</Text>
-              <Text style={styles.week}>Week {item.week}</Text>
-            </View>
-            <Text style={styles.topic}>{item.topic}</Text>
-            <View style={styles.footer}>
-              <Text style={styles.class}>{item.className}</Text>
-              <View style={styles.attendance}>
-                <Text style={styles.attLabel}>Attendance:</Text>
-                <Text style={styles.attValue}>{item.studentsPresent}/{item.totalStudents}</Text>
-              </View>
-            </View>
-            {item.prlFeedback && (
-               <View style={styles.prlBox}>
-                 <Text style={styles.prlLabel}>PRL Feedback:</Text>
-                 <Text style={styles.prlText}>{item.prlFeedback}</Text>
-               </View>
-            )}
+            <Text style={styles.courseTitle}>{item.courseName} ({item.courseCode})</Text>
+            <Text style={styles.subText}>Date: {item.date} | Week: {item.week}</Text>
+            <Text style={styles.topicText}>Topic: {item.topic}</Text>
+            <Text style={styles.statText}>Attendance: {item.actualStudents}/{item.totalRegistered}</Text>
+            {item.feedback ? <Text style={styles.feedback}>PRL Feedback: {item.feedback}</Text> : null}
           </View>
         )}
       />
@@ -86,23 +79,15 @@ export default function LecturerReportsList() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  headerSub: { fontSize: 13, color: '#64748B' },
-  list: { padding: 16 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  date: { fontSize: 14, fontWeight: '600', color: '#6366F1' },
-  week: { fontSize: 12, color: '#94A3B8' },
-  topic: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 12 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  class: { fontSize: 13, color: '#475569' },
-  attendance: { flexDirection: 'row' },
-  attLabel: { fontSize: 12, color: '#64748B', marginRight: 4 },
-  attValue: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
-  prlBox: { marginTop: 10, padding: 10, backgroundColor: '#F0FDF4', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#16A34A' },
-  prlLabel: { fontSize: 11, fontWeight: '700', color: '#166534' },
-  prlText: { fontSize: 12, color: '#14532D', marginTop: 2 }
+  container: { flex: 1, backgroundColor: '#f9f9f9', padding: 10 },
+  headerRow: { flexDirection: 'row', marginBottom: 10 },
+  searchBar: { flex: 1, backgroundColor: '#fff', padding: 10, borderRadius: 8, marginRight: 10, borderWidth: 1, borderColor: '#ddd' },
+  excelBtn: { backgroundColor: '#217346', padding: 10, borderRadius: 8, justifyContent: 'center', width: 70 },
+  excelText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
+  card: { backgroundColor: '#fff', padding: 15, marginBottom: 10, borderRadius: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3 },
+  courseTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  subText: { fontSize: 12, color: '#666', marginBottom: 4 },
+  topicText: { fontSize: 14, fontStyle: 'italic', marginBottom: 4 },
+  statText: { fontSize: 13, color: '#333', fontWeight: '500' },
+  feedback: { marginTop: 5, color: 'blue', fontSize: 12 }
 });
